@@ -1,0 +1,10 @@
+streamlit
+pandas
+google-generativeai
+docx2txt
+python-docx
+PyPDF2
+python-pptx
+xlsxwriter
+requests
+openpyxl
