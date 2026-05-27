@@ -354,7 +354,7 @@ if not st.session_state.logged_in:
                 st.error("ユーザー名またはパスワードが正しくありません。")
     st.stop()
 
-# --- 管理者画面の表示ロジック（セッション記憶・バグ完全消滅版） ---
+# --- 管理者画面の表示ロジック（強制リフレッシュ st.rerun() 完備版） ---
 if st.session_state.username == "kanri":
     st.title("🖥️ 管理者専用 ダッシュボード")
     st.markdown(f"ログイン中: {st.session_state.username} (管理者)")
@@ -362,7 +362,6 @@ if st.session_state.username == "kanri":
     if st.button("🚪 ログアウト", key="admin_logout"):
         st.session_state.logged_in = False
         st.session_state.username = ""
-        # 管理者用セッションの破棄
         if "selected_index" in st.session_state: del st.session_state["selected_index"]
         if "prev_user" in st.session_state: del st.session_state["prev_user"]
         st.rerun()
@@ -370,7 +369,7 @@ if st.session_state.username == "kanri":
     st.write("---")
     st.subheader("📋 担当者別の応答記録・評価結果一覧")
     
-    # 状態の初期化
+    # セッション記憶の初期化
     if "selected_index" not in st.session_state:
         st.session_state["selected_index"] = 0
     if "prev_user" not in st.session_state:
@@ -394,17 +393,21 @@ if st.session_state.username == "kanri":
             })
         df_base = pd.DataFrame(log_list)
         
-        # 担当者でのフィルタリング機能
+        # 担当者でのフィルター変更時に関数で即時リフレッシュさせる
+        def on_change_user_filter():
+            st.session_state["selected_index"] = 0  # フィルタ変更時はインデックスを初期化
+            
         users_list = ["すべて"] + list(df_base["担当者"].unique())
-        selected_user = st.selectbox("担当者でフィルター", users_list)
+        selected_user = st.selectbox(
+            "担当者でフィルター", 
+            options=users_list,
+            index=users_list.index(st.session_state["prev_user"]) if st.session_state["prev_user"] in users_list else 0,
+            key="current_user_filter_box",
+            on_change=lambda: st.session_state.update({"prev_user": st.session_state["current_user_filter_box"], "selected_index": 0})
+        )
         
-        # フィルターが切り替わったら選択インデックスを0リセットする安全装置
-        if selected_user != st.session_state["prev_user"]:
-            st.session_state["selected_index"] = 0
-            st.session_state["prev_user"] = selected_user
-        
-        if selected_user != "すべて":
-            df_filtered = df_base[df_base["担当者"] == selected_user].reset_index(drop=True)
+        if st.session_state["prev_user"] != "すべて":
+            df_filtered = df_base[df_base["担当者"] == st.session_state["prev_user"]].reset_index(drop=True)
         else:
             df_filtered = df_base.reset_index(drop=True)
             
@@ -417,13 +420,16 @@ if st.session_state.username == "kanri":
         if len(df_filtered) > 0:
             options_indices = list(range(len(df_filtered)))
             
-            # セッション値を安全な範囲に丸めるガード
             if st.session_state["selected_index"] >= len(df_filtered):
                 st.session_state["selected_index"] = 0
                 
-            # st.selectboxの選択変更をトリガーに関数で即時セッションを書き換える
+            # 💡【重要】プルダウン選択が切り替わった瞬間に、セッションを上書きして st.rerun() で画面全体を再描画させる
             def on_change_selection():
-                st.session_state["selected_index"] = options_indices.index(st.session_state["current_selection_box"])
+                # 選択された値の番号を取得
+                chosen_val = st.session_state["current_selection_box"]
+                st.session_state["selected_index"] = chosen_val
+                # 🔴 画面を強制再描画させて下部エリアへ即座に同期・反映させる
+                st.rerun()
                 
             selected_box_val = st.selectbox(
                 "確認したいデータの番号を選択してください", 
@@ -434,7 +440,7 @@ if st.session_state.username == "kanri":
                 on_change=on_change_selection
             )
             
-            # 現在セッションに記憶されている番号から生データを100%追従して抽出
+            # セッション状態に保存されたインデックス番号から確実にデータを追従抽出
             target_log = df_filtered.iloc[st.session_state["selected_index"]]["raw_data"]
             
             st.markdown("---")
