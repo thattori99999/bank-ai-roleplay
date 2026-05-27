@@ -210,7 +210,7 @@ def get_ai_roleplay_response(messages, persona, product_docs, api_key):
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(target_model)
             
-            combined_docs = "\n\n".join(product_docs) if product_docs else "特になし"
+            combined_docs = "\n\n".join(product_docs) if product_docs else "特なし"
             
             history_text = ""
             for m in recent_messages:
@@ -218,35 +218,35 @@ def get_ai_roleplay_response(messages, persona, product_docs, api_key):
                 history_text += f"{role_label}: {m['content']}\n"
                 
             system_prompt = f"""
-あなたは以下の【顧客ペルソナ】なりきり、銀行員（ユーザー）と対話をするロールプレイAIです。
-設定された性格や知識レベル、感情をリアルに反映させて対話してください。
-
-【顧客ペルソナ】
-・氏名: {persona['name']}
-・年齢: {persona['age']}
-・職業: {persona['job']}
-・家族構成: {persona['family']}
-・来店目的: {persona['purpose']}
-).性格: {persona['personality']}
-・投資経験: {persona['experience']}
-
-【参考：案内可能な金融商品情報】
-{combined_docs}
-
-【ロールプレイの絶対ルール】
-1. ユーザー（銀行員）の返答に対して、設定された性格や知識レベルに基づいてリアルに会話を続けてください。
-2. 一度に長文を話さないでください。実際の会話と同様に、1〜3文程度（最大でも100文字〜150文字程度）でテンポよく短く返答してください。
-3. ユーザーが「専門用語（ポートフォリオ、コモディティ、信託報酬など）」を説明なしに使った場合、少し困惑した態度をとるか、質問し直してください。
-4. 銀行員としてのマナーや、強引な勧誘、法令遵守（リスク説明の有無など）に問題があると感じた場合も、顧客の感情としてリアルに反応（例：「そんなにリスクがあるなら、やっぱりいいです」など）してください。
-5. 会話が「商品の購入」「検討のため持ち帰り」「お断り」のいずれかの節目を迎えるまで、ロールプレイを継続してください。
-6. 絶対に途中でAIとしてのメタな発言（「ロールプレイを終了しますか？」や「次の質問をどうぞ」など）をしないでください。あなたは100%このペルソナの人間です。
-
-【これまでの会話履歴（※直近の重要な会話のみ抽出）】
-{history_text}
-
-上記のルールと履歴を元に、次につづく「顧客(あなた)」の短い発言を1つだけ生成してください。
-AIとしての解説やメタ発言、余計な挨拶は一切含めないでください。
-"""
+    あなたは以下の【顧客ペルソナ】なりきり、銀行員（ユーザー）と対話をするロールプレイAIです。
+    設定された性格や知識レベル、感情をリアルに反映させて対話してください。
+    
+    【顧客ペルソナ】
+    ・氏名: {persona['name']}
+    ・年齢: {persona['age']}
+    ・職業: {persona['job']}
+    ・家族構成: {persona['family']}
+    ・来店目的: {persona['purpose']}
+    ・性格: {persona['personality']}
+    ・投資経験: {persona['experience']}
+    
+    【参考：案内可能な金融商品情報】
+    {combined_docs}
+    
+    【ロールプレイの絶対ルール】
+    1. ユーザー（銀行員）の返答に対して、設定された性格や知識レベルに基づいてリアルに会話を続けてください。
+    2. 一度に長文を話さないでください。実際の会話と同様に、1〜3文程度（最大でも100文字〜150文字程度）でテンポよく短く返答してください。
+    3. ユーザーが「専門用語（ポートフォリオ、コモディティ、信託報酬など）」を説明なしに使った場合、少し困惑した態度をとるか、質問し直してください。
+    4. 銀行員としてのマナーや、強引な勧誘、法令遵守（リスク説明の有無など）に問題があると感じた場合も、顧客の感情としてリアルに反応（例：「そんなにリスクがあるなら、やっぱりいいです」など）してください。
+    5. 会話が「商品の購入」「検討のため持ち帰り」「お断り」のいずれかの節目を迎えるまで、ロールプレイを継続してください。
+    6. 絶対に途中でAIとしてのメタな発言（「ロールプレイを終了しますか？」や「次の質問をどうぞ」など）をしないでください。あなたは100%このペルソナの人間です。
+    
+    【これまでの会話履歴（※直近の重要な会話のみ抽出）】
+    {history_text}
+    
+    上記のルールと履歴を元に、次につづく「顧客(あなた)」の短い発言を1つだけ生成してください。
+    AIとしての解説やメタ発言、余計な挨拶は一切含めないでください。
+    """
             response = model.generate_content(system_prompt)
             return response.text
             
@@ -307,18 +307,16 @@ def generate_evaluation_report(messages, persona, api_key):
     | 意向把握・ニーズ深掘り | | |
     
     ### 💡 良かった点
-    （箇条書きで記入）
+    （箇書きで記入）
     
     ### ⚠️ 改善すべき点・指導事項
     （箇条書きで記入、特に具体的なコンプライアンス上のリスクやNGワードがあれば指摘）
     """
             response = model.generate_content(evaluation_prompt)
             
-            # 【追加】Streamlitでのマークダウン表崩れを防ぐための自動クリーニングロジック
+            # Streamlitでのマークダウン表崩れを防ぐための自動クリーニングロジック
             cleaned_text = response.text
-            # 連続する不要なハイフンの行を綺麗に1本のテーブル境界線に補正する
             cleaned_text = re.sub(r'\|\s*[-–—]+\s*\|\s*[-–—]+\s*\|\s*[-–—]+\s*\|', '| --- | --- | --- |', cleaned_text)
-            # テーブルヘッダー周辺の改行の詰まりを解消
             cleaned_text = cleaned_text.replace("項目別詳細評価\n\n|", "項目別詳細評価\n|")
             
             return cleaned_text
@@ -359,7 +357,7 @@ if not st.session_state.logged_in:
                 st.error("ユーザー名またはパスワードが正しくありません。")
     st.stop()
 
-# --- 管理者画面と担当者画面の分岐表示 ---
+# --- 【改修②反映】管理者画面の表示ロジック ---
 if st.session_state.username == "kanri":
     st.title("🖥️ 管理者専用 ダッシュボード")
     st.markdown(f"ログイン中: {st.session_state.username} (管理者)")
@@ -405,12 +403,18 @@ if st.session_state.username == "kanri":
         if len(df_logs) > 0:
             target_log = df_logs.iloc[selected_index]["raw_data"]
             
+            # 【改修②】選択された内容がテキストエリアではなく下部に美しく出力される構造へ変更
+            st.markdown("---")
+            st.markdown(f"### 🎯 選択されたデータ詳細 (ペルソナ: **{target_log.get('persona_name')}** / 担当者: **{target_log.get('username')}**)")
+            
             col_admin_chat, col_admin_rep = st.columns([1, 1])
             with col_admin_chat:
                 st.markdown("#### 💬 会話履歴")
                 for msg in target_log.get("messages", []):
-                    role_name = "顧客" if msg["role"] == "assistant" else "銀行員"
-                    st.text_area(role_name, value=msg["content"], height=80, disabled=True)
+                    role_name = "👤 顧客" if msg["role"] == "assistant" else "💼 銀行員"
+                    # blockquote を用いて綺麗にメッセージを可視化
+                    st.markdown(f"> **{role_name}**\n> {msg['content']}")
+                    st.write("")
                     
             with col_admin_rep:
                 st.markdown("#### 📊 評価レポート")
@@ -453,9 +457,7 @@ if st.sidebar.button("⚙️ 顧客ペルソナ設定・リセット"):
     st.session_state.last_response = ""
     st.session_state.report = ""
     
-    # ペルソナ初期化保存
-    save_log_to_supabase(st.session_state.username, current_persona["name"], st.session_state.messages, report=None)
-    
+    # 【改修①】ペルソナ初期化時のDB保存処理を完全にカット
     st.success("ペルソナ設定に合わせて最初の発言を変更し、初期化しました！")
     st.rerun()
 
@@ -529,14 +531,7 @@ with col_chat:
             
         st.session_state.messages.append({"role": "assistant", "content": res})
         
-        # 毎往復の応答履歴をSupabaseにリアルタイム保存
-        save_log_to_supabase(
-            st.session_state.username, 
-            st.session_state.persona["name"], 
-            st.session_state.messages, 
-            report=st.session_state.report if st.session_state.report else None
-        )
-        
+        # 【改修①】通常対話の送信時のSupabaseへの自動保存処理を完全に削除（レポート生成時のみにするため）
         st.rerun()
 
 # --- 右側：評価結果エリア ---
@@ -557,7 +552,7 @@ with col_report:
                 st.session_state.report = report_res
                 st.session_state.last_response = report_res # Excel出力用
                 
-                # 評価レポート生成時にも最新履歴とレポートを合わせてSupabaseに上書き保存
+                # 【改修①】この「レポート生成ボタン」を押した時のみ、まとめてSupabaseに一度だけログ保存を実行する
                 save_log_to_supabase(
                     st.session_state.username, 
                     st.session_state.persona["name"], 
