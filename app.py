@@ -464,3 +464,144 @@ st.title("🏦 金融商品販売 AIロールプレイシステム")
 st.markdown(f"ログイン中: **{st.session_state.username}** さん | 顧客ペルソナを設定し、銀行員としての対話・提案スキルを磨くトレーニングツールです。")
 
 if st.sidebar.button("🚪 ログアウト", key="user_logout"):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.rerun()
+
+# --- 6. サイドバー機能 (ペルソナ設定 & ファイルロード) ---
+st.sidebar.header("👤 顧客ペルソナ設定")
+
+p_name = st.sidebar.text_input("氏名", value="山田 規子")
+p_age = st.sidebar.text_input("年齢", value="65歳")
+p_job = st.sidebar.text_input("職業", value="専業主婦 (夫は定年退職)")
+p_family = st.sidebar.text_input("家族構成", value="夫（68歳）と二人暮らし、独立した子供が2人")
+p_purpose = st.sidebar.text_input("来店目的", value="定期預金が満期を迎えたため手続きに来店")
+p_personality = st.sidebar.text_input("性格", value="慎重派で心配性。損はしたくないが、今の低金利には不満がある。")
+p_experience = st.sidebar.selectbox("投資経験", ["全くない", "少しある（過去に国債のみ）", "豊富にある"])
+
+current_persona = {
+    "name": p_name, "age": p_age, "job": p_job, "family": p_family,
+    "purpose": p_purpose, "personality": p_personality, "experience": p_experience
+}
+
+if st.sidebar.button("⚙️ 顧客ペルソナ設定・リセット"):
+    st.session_state.persona = current_persona
+    with st.spinner("新しいペルソナに合わせた最初の発言を生成中..."):
+        dynamic_initial_message = generate_initial_greeting(current_persona, EMBEDDED_API_KEY)
+    st.session_state.messages = [{"role": "assistant", "content": dynamic_initial_message}]
+    st.session_state.last_response = ""
+    st.session_state.report = ""
+    st.success("ペルソナ設定に合わせて最初の発言を変更し、初期化しました！")
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.header("📁 商品情報・規約ロード")
+
+uploaded_files = st.sidebar.file_uploader(
+    "金融商品資料等 (Word, PDF, PPT, Excel)", 
+    type=["docx", "pdf", "pptx", "xlsx", "xls"], 
+    accept_multiple_files=True,
+    key="file_uploader"
+)
+
+all_extra_text = []
+if uploaded_files:
+    for f in uploaded_files:
+        try:
+            if f.name.endswith(".docx"): content = extract_from_docx(f)
+            elif f.name.endswith(".pdf"): content = extract_from_pdf(f)
+            elif f.name.endswith(".pptx"): content = extract_from_pptx(f)
+            elif f.name.endswith((".xlsx", ".xls")): content = extract_from_excel(f)
+            all_extra_text.append(f"--- ファイル名: {f.name} ---\n{content}")
+            st.sidebar.write(f"✔️ 資料読込済: {f.name}")
+        except Exception as e:
+            st.sidebar.error(f"❌ {f.name} の読込失敗")
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🛑 アプリを終了する"):
+    st.sidebar.warning("システムを終了します。")
+    os.getpid()
+    os.kill(os.getpid(), signal.SIGINT)
+
+# --- 7. セッション状態の初期化 ---
+if "persona" not in st.session_state:
+    st.session_state.persona = current_persona
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "こんにちは。定期預金の満期の件で来たんですが、今の時代、普通に預けていても全然増えないですよね…"}]
+if "last_response" not in st.session_state:
+    st.session_state.last_response = ""
+if "report" not in st.session_state:
+    st.session_state.report = ""
+
+# --- 8. メインエリアのレイアウト設計 ---
+col_chat, col_report = st.columns([1.2, 1.0])
+
+# --- 左側：チャットエリア ---
+with col_chat:
+    st.subheader("💬 ロールプレイ対話画面")
+    st.info(f"【現在対話中の顧客】 {st.session_state.persona['name']}さん ({st.session_state.persona['age']} / {st.session_state.persona['job']})")
+
+    for m in st.session_state.messages:
+        role = "assistant" if m["role"] == "assistant" else "user"
+        avatar = "👤" if role == "assistant" else "💼"
+        with st.chat_message(role, avatar=avatar):
+            st.markdown(m["content"])
+
+    if prompt := st.chat_input("銀行員としての返答・提案を入力してください"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user", avatar="💼"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant", avatar="👤"):
+            with st.spinner(f"{st.session_state.persona['name']}さんが考えています..."):
+                res = get_ai_roleplay_response(
+                    st.session_state.messages, 
+                    st.session_state.persona, 
+                    all_extra_text, 
+                    EMBEDDED_API_KEY
+                )
+            st.markdown(res)
+            
+        st.session_state.messages.append({"role": "assistant", "content": res})
+        st.rerun()
+
+# --- 右側：評価結果エリア ---
+with col_report:
+    st.subheader("📊 応対評価レポート")
+    st.markdown("ロールプレイの節目、または終了時に以下のボタンを押して評価を生成してください。")
+    
+    if st.button("📝 応対評価レポートを生成する", type="primary"):
+        if len(st.session_state.messages) <= 1:
+            st.warning("会話が開始されていません。ロールプレイを行ってから評価してください。")
+        else:
+            with st.spinner("これまでの会話内容からコンプライアンス・応対品質を分析中..."):
+                report_res = generate_evaluation_report(
+                    st.session_state.messages, 
+                    st.session_state.persona, 
+                    EMBEDDED_API_KEY
+                )
+                st.session_state.report = report_res
+                st.session_state.last_response = report_res # Excel出力用
+                
+                # レポート生成時のみ、まとめてSupabaseに一度だけログ保存を実行
+                save_log_to_supabase(
+                    st.session_state.username, 
+                    st.session_state.persona["name"], 
+                    st.session_state.messages, 
+                    report=report_res
+                )
+                
+                st.rerun()
+                
+    if st.session_state.report:
+        st.markdown(st.session_state.report)
+        
+        excel_data = create_excel_download(st.session_state.report)
+        st.download_button(
+            label="📥 評価結果レポートをExcelでダウンロード",
+            data=excel_data,
+            file_name="roleplay_evaluation.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.info("ここにAIによる採点、コンプライアンスチェックのレポートが表示されます。")
