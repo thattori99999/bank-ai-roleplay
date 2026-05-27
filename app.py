@@ -201,16 +201,13 @@ def generate_initial_greeting(persona, api_key):
 # --- 3. AI回答生成ロジック (自動リトライ・履歴ウィンドウ削減版) ---
 def get_ai_roleplay_response(messages, persona, product_docs, api_key):
     target_model = get_safe_model_name(api_key)
-    
-    # トークン爆発を防ぐため、AIに送る「過去の履歴」を最新の6発言（3往復）に限定
     recent_messages = [messages[0]] + messages[-5:] if len(messages) > 6 else messages
     
     for attempt in range(5):
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(target_model)
-            
-            combined_docs = "\n\n".join(product_docs) if product_docs else "特なし"
+            combined_docs = "\n\n".join(product_docs) if product_docs else "特になし"
             
             history_text = ""
             for m in recent_messages:
@@ -218,35 +215,35 @@ def get_ai_roleplay_response(messages, persona, product_docs, api_key):
                 history_text += f"{role_label}: {m['content']}\n"
                 
             system_prompt = f"""
-    あなたは以下の【顧客ペルソナ】なりきり、銀行員（ユーザー）と対話をするロールプレイAIです。
-    設定された性格や知識レベル、感情をリアルに反映させて対話してください。
-    
-    【顧客ペルソナ】
-    ・氏名: {persona['name']}
-    ・年齢: {persona['age']}
-    ・職業: {persona['job']}
-    ・家族構成: {persona['family']}
-    ・来店目的: {persona['purpose']}
-    ・性格: {persona['personality']}
-    ・投資経験: {persona['experience']}
-    
-    【参考：案内可能な金融商品情報】
-    {combined_docs}
-    
-    【ロールプレイの絶対ルール】
-    1. ユーザー（銀行員）の返答に対して、設定された性格や知識レベルに基づいてリアルに会話を続けてください。
-    2. 一度に長文を話さないでください。実際の会話と同様に、1〜3文程度（最大でも100文字〜150文字程度）でテンポよく短く返答してください。
-    3. ユーザーが「専門用語（ポートフォリオ、コモディティ、信託報酬など）」を説明なしに使った場合、少し困惑した態度をとるか、質問し直してください。
-    4. 銀行員としてのマナーや、強引な勧誘、法令遵守（リスク説明の有無など）に問題があると感じた場合も、顧客の感情としてリアルに反応（例：「そんなにリスクがあるなら、やっぱりいいです」など）してください。
-    5. 会話が「商品の購入」「検討のため持ち帰り」「お断り」のいずれかの節目を迎えるまで、ロールプレイを継続してください。
-    6. 絶対に途中でAIとしてのメタな発言（「ロールプレイを終了しますか？」や「次の質問をどうぞ」など）をしないでください。あなたは100%このペルソナの人間です。
-    
-    【これまでの会話履歴（※直近の重要な会話のみ抽出）】
-    {history_text}
-    
-    上記のルールと履歴を元に、次につづく「顧客(あなた)」の短い発言を1つだけ生成してください。
-    AIとしての解説やメタ発言、余計な挨拶は一切含めないでください。
-    """
+あなたは以下の【顧客ペルソナ】なりきり、銀行員（ユーザー）と対話をするロールプレイAIです。
+設定された性格や知識レベル、感情をリアルに反映させて対話してください。
+
+【顧客ペルソナ】
+・氏名: {persona['name']}
+・年齢: {persona['age']}
+・職業: {persona['job']}
+・家族構成: {persona['family']}
+・来店目的: {persona['purpose']}
+・性格: {persona['personality']}
+・投資経験: {persona['experience']}
+
+【参考：案内可能な金融商品情報】
+{combined_docs}
+
+【ロールプレイの絶対ルール】
+1. ユーザー（銀行員）の返答に対して、設定された性格や知識レベルに基づいてリアルに会話を続けてください。
+2. 一度に長文を話さないでください。実際の会話と同様に、1〜3文程度（最大でも100文字〜150文字程度）でテンポよく短く返答してください。
+3. ユーザーが「専門用語（ポートフォリオ、コモディティ、信託報酬など）」を説明なしに使った場合、少し困惑した態度をとるか、質問し直してください。
+4. 銀行員としてのマナーや、強引な勧誘、法令遵守（リスク説明の有無など）に問題があると感じた場合も、顧客の感情としてリアルに反応（例：「そんなにリスクがあるなら、やっぱりいいです」など）してください。
+5. 会話が「商品の購入」「検討のため持ち帰り」「お断り」のいずれかの節目を迎えるまで、ロールプレイを継続してください。
+6. 絶対に途中でAIとしてのメタな発言（「ロールプレイを終了しますか？」や「次の質問をどうぞ」など）をしないでください。あなたは100%このペルソナの人間です。
+
+【これまでの会話履歴（※直近の重要な会話のみ抽出）】
+{history_text}
+
+上記のルールと履歴を元に、次につづく「顧客(あなた)」の短い発言を1つだけ生成してください。
+AIとしての解説やメタ発言、余計な挨拶は一切含めないでください。
+"""
             response = model.generate_content(system_prompt)
             return response.text
             
@@ -307,7 +304,7 @@ def generate_evaluation_report(messages, persona, api_key):
     | 意向把握・ニーズ深掘り | | |
     
     ### 💡 良かった点
-    （箇書きで記入）
+    （箇条書きで記入）
     
     ### ⚠️ 改善すべき点・指導事項
     （箇条書きで記入、特に具体的なコンプライアンス上のリスクやNGワードがあれば指摘）
@@ -357,7 +354,7 @@ if not st.session_state.logged_in:
                 st.error("ユーザー名またはパスワードが正しくありません。")
     st.stop()
 
-# --- 【改修②反映】管理者画面の表示ロジック ---
+# --- 管理者画面の表示ロジック（切り替え・連動バグ修正版） ---
 if st.session_state.username == "kanri":
     st.title("🖥️ 管理者専用 ダッシュボード")
     st.markdown(f"ログイン中: {st.session_state.username} (管理者)")
@@ -386,24 +383,35 @@ if st.session_state.username == "kanri":
                 "評価レポート有無": "あり" if l.get("report") else "なし",
                 "raw_data": l
             })
-        df_logs = pd.DataFrame(log_list)
+        df_base = pd.DataFrame(log_list)
         
-        users_list = ["すべて"] + list(df_logs["担当者"].unique())
+        # 担当者でのフィルタリング機能
+        users_list = ["すべて"] + list(df_base["担当者"].unique())
         selected_user = st.selectbox("担当者でフィルター", users_list)
         
         if selected_user != "すべて":
-            df_logs = df_logs[df_logs["担当者"] == selected_user]
+            df_filtered = df_base[df_base["担当者"] == selected_user].reset_index(drop=True)
+        else:
+            df_filtered = df_base.reset_index(drop=True)
             
-        st.dataframe(df_logs.drop(columns=["raw_data"]), use_container_width=True)
+        # フィルター後のデータフレームを画面に表示
+        st.dataframe(df_filtered.drop(columns=["raw_data"]), use_container_width=True)
         
         st.write("---")
         st.subheader("🔍 詳細ログ確認")
-        selected_index = st.number_input("確認したい行番号を選択してください (0から開始)", min_value=0, max_value=max(0, len(df_logs)-1), step=1)
         
-        if len(df_logs) > 0:
-            target_log = df_logs.iloc[selected_index]["raw_data"]
+        # 選択ボックス（インデックス変更にリアルタイム反応させるため st.number_input から st.selectbox に改善）
+        if len(df_filtered) > 0:
+            options_indices = list(range(len(df_filtered)))
+            selected_index = st.selectbox(
+                "確認したいデータの番号を選択してください (上に表示されている表の並び順と連動します)", 
+                options=options_indices,
+                format_func=lambda x: f"No.{x} : {df_filtered.iloc[x]['日時']} - {df_filtered.iloc[x]['担当者']} ({df_filtered.iloc[x]['ペルソナ名']})"
+            )
             
-            # 【改修②】選択された内容がテキストエリアではなく下部に美しく出力される構造へ変更
+            # 選択された行の生データを抽出
+            target_log = df_filtered.iloc[selected_index]["raw_data"]
+            
             st.markdown("---")
             st.markdown(f"### 🎯 選択されたデータ詳細 (ペルソナ: **{target_log.get('persona_name')}** / 担当者: **{target_log.get('username')}**)")
             
@@ -412,7 +420,6 @@ if st.session_state.username == "kanri":
                 st.markdown("#### 💬 会話履歴")
                 for msg in target_log.get("messages", []):
                     role_name = "👤 顧客" if msg["role"] == "assistant" else "💼 銀行員"
-                    # blockquote を用いて綺麗にメッセージを可視化
                     st.markdown(f"> **{role_name}**\n> {msg['content']}")
                     st.write("")
                     
@@ -422,6 +429,9 @@ if st.session_state.username == "kanri":
                     st.markdown(target_log.get("report"))
                 else:
                     st.info("このセッションでは評価レポートは生成されていません。")
+        else:
+            st.info("該当するデータがありません。")
+            
     st.stop()
 
 # --- 通常の担当者（demo）画面 ---
@@ -456,8 +466,6 @@ if st.sidebar.button("⚙️ 顧客ペルソナ設定・リセット"):
     st.session_state.messages = [{"role": "assistant", "content": dynamic_initial_message}]
     st.session_state.last_response = ""
     st.session_state.report = ""
-    
-    # 【改修①】ペルソナ初期化時のDB保存処理を完全にカット
     st.success("ペルソナ設定に合わせて最初の発言を変更し、初期化しました！")
     st.rerun()
 
@@ -530,8 +538,6 @@ with col_chat:
             st.markdown(res)
             
         st.session_state.messages.append({"role": "assistant", "content": res})
-        
-        # 【改修①】通常対話の送信時のSupabaseへの自動保存処理を完全に削除（レポート生成時のみにするため）
         st.rerun()
 
 # --- 右側：評価結果エリア ---
@@ -552,7 +558,7 @@ with col_report:
                 st.session_state.report = report_res
                 st.session_state.last_response = report_res # Excel出力用
                 
-                # 【改修①】この「レポート生成ボタン」を押した時のみ、まとめてSupabaseに一度だけログ保存を実行する
+                # レポート生成時のみ、まとめてSupabaseに一度だけログ保存を実行
                 save_log_to_supabase(
                     st.session_state.username, 
                     st.session_state.persona["name"], 
