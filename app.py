@@ -42,7 +42,7 @@ def load_api_key():
 INI_KEY = load_api_key()
 EMBEDDED_API_KEY = INI_KEY
 
-# --- Supabase 連携用関数（詳細デバッグ版） ---
+# --- Supabase 連携用関数（サイレント安全対策版） ---
 def get_supabase_config():
     try:
         if "SUPABASE" in st.secrets:
@@ -54,7 +54,6 @@ def get_supabase_config():
 def save_log_to_supabase(username, persona_name, messages, report=None):
     url, key = get_supabase_config()
     if not url or not key:
-        st.session_state["db_error"] = "StreamlitのSecretsに[SUPABASE]設定が見つかりません。"
         return False
     
     headers = {
@@ -72,18 +71,9 @@ def save_log_to_supabase(username, persona_name, messages, report=None):
     }
     
     try:
-        # 3秒タイムアウトで通信を実行
         res = requests.post(f"{url}/rest/v1/roleplay_logs", headers=headers, json=data, timeout=3)
-        if res.status_code in [200, 201]:
-            if "db_error" in st.session_state:
-                del st.session_state["db_error"]
-            return True
-        else:
-            # サーバーから返ってきたエラーメッセージを保持
-            st.session_state["db_error"] = f"ステータスコード: {res.status_code} | 詳細: {res.text}"
-            return False
+        return res.status_code in [200, 201]
     except Exception as e:
-        st.session_state["db_error"] = f"通信例外エラー: {str(e)}"
         return False
 
 def fetch_logs_from_supabase():
@@ -236,8 +226,8 @@ def get_ai_roleplay_response(messages, persona, product_docs, api_key):
 ・年齢: {persona['age']}
 ・職業: {persona['job']}
 ・家族構成: {persona['family']}
-).来店目的: {persona['purpose']}
-・性格: {persona['personality']}
+・来店目的: {persona['purpose']}
+).性格: {persona['personality']}
 ・投資経験: {persona['experience']}
 
 【参考：案内可能な金融商品情報】
@@ -302,7 +292,8 @@ def generate_evaluation_report(messages, persona, api_key):
     5. 意向把握とニーズ深掘り (表面的な来店目的だけでなく、顧客の潜在的な資金ニーズやリスク許容度を適切に引き出せているか)
     
     【出力フォーマット】
-    以下の構成で、必ずマークダウンの「表形式」を活用して分かりやすく出力してください。
+    以下の構成で、マークダウンの「表形式」を活用して分かりやすく出力してください。
+    テーブルのヘッダー（行頭）と区切り線の間に余計な改行やスペースを絶対に入れないでください。
     総合判定は（A: 優秀、B: 合格、C: 要指導）の3段階で評価してください。
     
     ### 📊 総合評価: [A / B / C]
@@ -322,7 +313,15 @@ def generate_evaluation_report(messages, persona, api_key):
     （箇条書きで記入、特に具体的なコンプライアンス上のリスクやNGワードがあれば指摘）
     """
             response = model.generate_content(evaluation_prompt)
-            return response.text
+            
+            # 【追加】Streamlitでのマークダウン表崩れを防ぐための自動クリーニングロジック
+            cleaned_text = response.text
+            # 連続する不要なハイフンの行を綺麗に1本のテーブル境界線に補正する
+            cleaned_text = re.sub(r'\|\s*[-–—]+\s*\|\s*[-–—]+\s*\|\s*[-–—]+\s*\|', '| --- | --- | --- |', cleaned_text)
+            # テーブルヘッダー周辺の改行の詰まりを解消
+            cleaned_text = cleaned_text.replace("項目別詳細評価\n\n|", "項目別詳細評価\n|")
+            
+            return cleaned_text
             
         except (exceptions.ResourceExhausted, Exception) as e:
             error_msg = str(e)
@@ -446,7 +445,7 @@ current_persona = {
     "purpose": p_purpose, "personality": p_personality, "experience": p_experience
 }
 
-if st.sidebar.button("⚙️ 顧客ペルソナ設定・リreset"):
+if st.sidebar.button("⚙️ 顧客ペルソナ設定・リセット"):
     st.session_state.persona = current_persona
     with st.spinner("新しいペルソナに合わせた最初の発言を生成中..."):
         dynamic_initial_message = generate_initial_greeting(current_persona, EMBEDDED_API_KEY)
@@ -506,10 +505,6 @@ col_chat, col_report = st.columns([1.2, 1.0])
 with col_chat:
     st.subheader("💬 ロールプレイ対話画面")
     st.info(f"【現在対話中の顧客】 {st.session_state.persona['name']}さん ({st.session_state.persona['age']} / {st.session_state.persona['job']})")
-    
-    # 🔴 Supabaseのエラーメッセージが蓄積されている場合に画面に警告表示するデバッグ枠
-    if "db_error" in st.session_state:
-        st.error(f"⚠️ Supabase保存失敗の理由:\n{st.session_state['db_error']}\n\n※このエラーが出ている間は管理者ダッシュボードにログが反映されません。")
 
     for m in st.session_state.messages:
         role = "assistant" if m["role"] == "assistant" else "user"
